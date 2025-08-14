@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OAuth Client Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom styles for tab highlighting */
+      .tab-button.active {
+        @apply border-b-2 border-blue-500 text-blue-600;
+      }
+      /* Style for required input fields */
+      input:required:invalid {
+        border-color: #ef4444; /* red-500 */
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 font-sans antialiased">
+    <div
+      id="app"
+      class="max-w-6xl mx-auto my-10 p-6 bg-white rounded-xl shadow-2xl"
+    >
+      <h1 class="text-3xl font-bold text-center text-blue-800 mb-8">
+        OAuth Client Management Server
+      </h1>
+
+      <!-- Auth Section (Login/Register) -->
+      <div v-if="!token" class="space-y-6">
+        <h2 class="text-2xl font-semibold text-gray-800 border-b pb-4 mb-4">
+          Welcome!
+        </h2>
+
+        <!-- Tab Navigation for Auth -->
+        <div class="flex border-b border-gray-200">
+          <button
+            @click="authTab = 'login'"
+            :class="{'tab-button active': authTab === 'login', 'text-gray-600 hover:text-gray-800 py-3 px-6 block focus:outline-none transition duration-150 ease-in-out': true}"
+          >
+            Login
+          </button>
+          <button
+            @click="authTab = 'register'"
+            :class="{'tab-button active': authTab === 'register', 'text-gray-600 hover:text-gray-800 py-3 px-6 block focus:outline-none transition duration-150 ease-in-out': true}"
+          >
+            Register
+          </button>
+        </div>
+
+        <div v-if="authTab === 'register'" class="mt-6">
+          <div
+            v-if="registerSuccess"
+            class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4"
+            role="alert"
+          >
+            <p>{{ registerSuccess }}</p>
+          </div>
+          <div
+            v-if="registerError"
+            class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"
+            role="alert"
+          >
+            <p>{{ registerError }}</p>
+          </div>
+          <div class="mb-4">
+            <label
+              for="registerEmail"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Email:</label
+            >
+            <input
+              type="email"
+              id="registerEmail"
+              v-model="registerForm.email"
+              required
+              class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div class="mb-6">
+            <label
+              for="registerPassword"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Password:</label
+            >
+            <input
+              type="password"
+              id="registerPassword"
+              v-model="registerForm.password"
+              required
+              class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            @click="registerUser"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out"
+          >
+            Register
+          </button>
+        </div>
+
+        <div v-if="authTab === 'login'" class="mt-6">
+          <div
+            v-if="loginError"
+            class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"
+            role="alert"
+          >
+            <p>{{ loginError }}</p>
+          </div>
+          <div class="mb-4">
+            <label
+              for="loginEmail"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Email:</label
+            >
+            <input
+              type="email"
+              id="loginEmail"
+              v-model="loginForm.email"
+              required
+              class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div class="mb-6">
+            <label
+              for="loginPassword"
+              class="block text-gray-700 text-sm font-bold mb-2"
+              >Password:</label
+            >
+            <input
+              type="password"
+              id="loginPassword"
+              v-model="loginForm.password"
+              required
+              class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <button
+            @click="loginUser"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+
+      <!-- Authenticated Section -->
+      <div v-else>
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-semibold text-gray-800">
+            Welcome, {{ userEmail }}
+          </h2>
+          <button
+            @click="logout"
+            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out"
+          >
+            Logout
+          </button>
+        </div>
+
+        <!-- Main Tab Navigation -->
+        <div class="flex border-b border-gray-200 mb-6">
+          <button
+            @click="currentTab = 'my-clients'"
+            :class="{'tab-button active': currentTab === 'my-clients', 'text-gray-600 hover:text-gray-800 py-3 px-6 block focus:outline-none transition duration-150 ease-in-out': true}"
+          >
+            My Clients
+          </button>
+          <button
+            @click="currentTab = 'create-client'"
+            :class="{'tab-button active': currentTab === 'create-client', 'text-gray-600 hover:text-gray-800 py-3 px-6 block focus:outline-none transition duration-150 ease-in-out': true}"
+          >
+            Create Client
+          </button>
+          <button
+            @click="currentTab = 'all-clients'"
+            :class="{'tab-button active': currentTab === 'all-clients', 'text-gray-600 hover:text-gray-800 py-3 px-6 block focus:outline-none transition duration-150 ease-in-out': true}"
+          >
+            All Clients (Admin)
+          </button>
+        </div>
+
+        <div
+          v-if="clientMessage"
+          class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4"
+          role="alert"
+        >
+          <p>{{ clientMessage }}</p>
+        </div>
+        <div
+          v-if="clientError"
+          class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4"
+          role="alert"
+        >
+          <p>{{ clientError }}</p>
+        </div>
+
+        <!-- My Clients Tab -->
+        <div v-if="currentTab === 'my-clients'">
+          <h3 class="text-xl font-semibold mb-4 text-blue-700">
+            My Registered Clients
+          </h3>
+          <div v-if="myClients.length > 0" class="space-y-4">
+            <div
+              v-for="client in myClients"
+              :key="client.client_id"
+              class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200"
+            >
+              <p class="text-lg font-bold text-gray-900">
+                {{ client.client_id }}
+              </p>
+              <p class="text-sm text-gray-500 mt-1">
+                Owner: {{ client.owner }}
+              </p>
+              <div class="mt-4 text-sm text-gray-700 space-y-1">
+                <p>
+                  <strong>Redirect URIs:</strong> {{ client.redirect_uris }}
+                </p>
+                <p><strong>Grant Types:</strong> {{ client.grant_types }}</p>
+                <p>
+                  <strong>Response Types:</strong> {{ client.response_types }}
+                </p>
+                <p><strong>Scope:</strong> {{ client.scope }}</p>
+                <p>
+                  <strong>Client Secret:</strong>
+                  <span class="font-mono text-xs bg-gray-200 p-1 rounded"
+                    >{{ client.client_secret }}</span
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+          <p v-else class="text-gray-600">
+            You have not created any clients yet.
+          </p>
+        </div>
+
+        <!-- Create Client Tab -->
+        <div v-if="currentTab === 'create-client'">
+          <h3 class="text-xl font-semibold mb-4 text-blue-700">
+            Register a New OAuth Client
+          </h3>
+          <form @submit.prevent="createClient" class="space-y-4">
+            <div>
+              <label
+                for="client_id"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Client ID (Unique Identifier):</label
+              >
+              <input
+                type="text"
+                id="client_id"
+                v-model="clientForm.client_id"
+                required
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="client_secret"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Client Secret:</label
+              >
+              <input
+                type="text"
+                id="client_secret"
+                v-model="clientForm.client_secret"
+                required
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="redirect_uris"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Redirect URIs (Comma-separated):</label
+              >
+              <input
+                type="text"
+                id="redirect_uris"
+                v-model="clientForm.redirect_uris"
+                required
+                placeholder="e.g., https://example.com/callback,https://another.com/callback"
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="grant_types"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Grant Types (Comma-separated):</label
+              >
+              <input
+                type="text"
+                id="grant_types"
+                v-model="clientForm.grant_types"
+                required
+                placeholder="e.g., authorization_code,refresh_token"
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="response_types"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Response Types (Comma-separated):</label
+              >
+              <input
+                type="text"
+                id="response_types"
+                v-model="clientForm.response_types"
+                required
+                placeholder="e.g., code"
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label
+                for="scope"
+                class="block text-gray-700 text-sm font-bold mb-2"
+                >Scope (Comma-separated):</label
+              >
+              <input
+                type="text"
+                id="scope"
+                v-model="clientForm.scope"
+                required
+                placeholder="e.g., openid offline wallet.read"
+                class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-150 ease-in-out"
+            >
+              Register Client
+            </button>
+          </form>
+        </div>
+
+        <!-- All Clients Tab -->
+        <div v-if="currentTab === 'all-clients'">
+          <h3 class="text-xl font-semibold mb-4 text-blue-700">
+            All Registered Clients (Admin View)
+          </h3>
+          <p
+            v-if="!isClientsAllAdminView"
+            class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4"
+          >
+            This view is for demonstration of the `GET /api/clients/all`
+            endpoint. Your backend may implement access control.
+          </p>
+          <div v-if="allClients.length > 0" class="space-y-4">
+            <div
+              v-for="client in allClients"
+              :key="client.client_id"
+              class="bg-gray-50 p-6 rounded-lg shadow-sm border border-gray-200"
+            >
+              <p class="text-lg font-bold text-gray-900">
+                {{ client.client_id }}
+              </p>
+              <p class="text-sm text-gray-500 mt-1">
+                Owner: {{ client.owner || (client.User ? client.User.email :
+                'N/A') }}
+              </p>
+              <div class="mt-4 text-sm text-gray-700 space-y-1">
+                <p>
+                  <strong>Redirect URIs:</strong> {{ client.redirect_uris }}
+                </p>
+                <p><strong>Grant Types:</strong> {{ client.grant_types }}</p>
+                <p>
+                  <strong>Response Types:</strong> {{ client.response_types }}
+                </p>
+                <p><strong>Scope:</strong> {{ client.scope }}</p>
+                <p>
+                  <strong>Client Secret:</strong>
+                  <span class="font-mono text-xs bg-gray-200 p-1 rounded"
+                    >{{ client.client_secret }}</span
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+          <p v-else class="text-gray-600">
+            No clients have been registered yet.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      new Vue({
+        el: "#app",
+        data: {
+          token: localStorage.getItem("jwt_token") || null,
+          userEmail: localStorage.getItem("user_email") || null,
+          authTab: "login",
+          currentTab: "my-clients",
+          registerForm: {
+            email: "",
+            password: "",
+          },
+          loginForm: {
+            email: "",
+            password: "",
+          },
+          clientForm: {
+            client_id: "",
+            client_secret: "",
+            redirect_uris: "", // Comma-separated string
+            grant_types: "", // Comma-separated string
+            response_types: "", // Comma-separated string
+            scope: "", // Comma-separated string
+          },
+          myClients: [],
+          allClients: [],
+          registerSuccess: "",
+          registerError: "",
+          loginError: "",
+          clientMessage: "",
+          clientError: "",
+          isClientsAllAdminView: true, // A flag to demonstrate the GET all endpoint
+        },
+        watch: {
+          // Watch for changes in currentTab to trigger data fetching
+          currentTab(newTab, oldTab) {
+            this.clearMessages()
+            if (newTab === "my-clients" && this.token) {
+              this.getMyClients()
+            } else if (newTab === "all-clients" && this.token) {
+              this.getAllClients()
+            }
+          },
+        },
+        methods: {
+          // --- Utility Methods ---
+          clearMessages() {
+            this.registerSuccess = ""
+            this.registerError = ""
+            this.loginError = ""
+            this.clientMessage = ""
+            this.clientError = ""
+          },
+          setAuthHeader() {
+            if (this.token) {
+              axios.defaults.headers.common[
+                "Authorization"
+              ] = `Bearer ${this.token}`
+            } else {
+              delete axios.defaults.headers.common["Authorization"]
+            }
+          },
+
+          // --- User Authentication ---
+          async registerUser() {
+            this.clearMessages()
+            if (!this.registerForm.email || !this.registerForm.password) {
+              this.registerError = "Email and password are required."
+              return
+            }
+            try {
+              const response = await axios.post(
+                "/api/users/register",
+                this.registerForm
+              )
+              this.registerSuccess = response.data.message + ". Please log in."
+              this.registerForm.email = ""
+              this.registerForm.password = ""
+              this.authTab = "login"
+            } catch (error) {
+              this.registerError =
+                error.response?.data?.message || "Registration failed."
+              console.error("Registration error:", error)
+            }
+          },
+          async loginUser() {
+            this.clearMessages()
+            if (!this.loginForm.email || !this.loginForm.password) {
+              this.loginError = "Email and password are required."
+              return
+            }
+            try {
+              const response = await axios.post(
+                "/api/users/login",
+                this.loginForm
+              )
+              this.token = response.data.token
+              this.userEmail = this.loginForm.email
+              localStorage.setItem("jwt_token", this.token)
+              localStorage.setItem("user_email", this.userEmail)
+              this.setAuthHeader()
+              this.loginForm.email = ""
+              this.loginForm.password = ""
+              this.clientMessage =
+                "Logged in successfully! Loading your clients..."
+              this.getMyClients()
+              this.currentTab = "my-clients"
+            } catch (error) {
+              this.loginError =
+                error.response?.data?.message ||
+                "Login failed. Check your credentials."
+              console.error("Login error:", error)
+            }
+          },
+          logout() {
+            this.token = null
+            this.userEmail = null
+            localStorage.removeItem("jwt_token")
+            localStorage.removeItem("user_email")
+            this.setAuthHeader()
+            this.myClients = []
+            this.allClients = []
+            this.clearMessages()
+            this.authTab = "login"
+            alert("Logged out successfully!")
+          },
+
+          // --- Client Management ---
+          async createClient() {
+            this.clearMessages()
+            try {
+              // Prepare the payload by splitting comma-separated strings into arrays
+              const payload = {
+                client_id: this.clientForm.client_id,
+                client_secret: this.clientForm.client_secret,
+                redirect_uris: this.clientForm.redirect_uris
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s),
+                grant_types: this.clientForm.grant_types
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s),
+                response_types: this.clientForm.response_types
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s),
+                scope: this.clientForm.scope
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter((s) => s)
+                  .join(" "),
+              }
+              const response = await axios.post("/api/clients", payload)
+              this.clientMessage = response.data.message
+              this.clientForm = {
+                client_id: "",
+                client_secret: "",
+                redirect_uris: "",
+                grant_types: "",
+                response_types: "",
+                scope: "",
+              }
+              this.getMyClients() // Refresh client list after creation
+              this.currentTab = "my-clients" // Switch to My Clients tab
+            } catch (error) {
+              this.clientError =
+                error.response?.data?.message || "Failed to create client."
+              console.error("Create client error:", error)
+            }
+          },
+          async getMyClients() {
+            this.clearMessages()
+            try {
+              const response = await axios.get("/api/clients")
+              this.myClients = response.data.clients
+            } catch (error) {
+              this.clientError =
+                error.response?.data?.message || "Failed to fetch your clients."
+              console.error("Get my clients error:", error)
+            }
+          },
+          async getAllClients() {
+            this.clearMessages()
+            try {
+              const response = await axios.get("/api/clients/all")
+              this.allClients = response.data.clients
+              this.isClientsAllAdminView = true
+            } catch (error) {
+              this.clientError =
+                error.response?.data?.message || "Failed to fetch all clients."
+              console.error("Get all clients error:", error)
+              this.isClientsAllAdminView = false
+            }
+          },
+        },
+        created() {
+          this.setAuthHeader()
+          if (this.token) {
+            this.getMyClients()
+          }
+        },
+      })
+    </script>
+  </body>
+</html>
