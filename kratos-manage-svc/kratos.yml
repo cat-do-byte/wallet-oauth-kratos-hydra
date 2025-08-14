@@ -1,0 +1,84 @@
+dsn: sqlite://./kratos_database2.db?_fk=true
+
+serve:
+  public:
+    base_url: http://localhost:4433
+  admin:
+    base_url: http://localhost:4434
+
+log:
+  level: debug
+  format: text
+
+identity:
+  default_schema_id: default
+  schemas:
+    - id: default
+      url: file://./identity.schema.json
+
+# selfservice:
+#   default_browser_return_url: http://localhost:3000/
+
+#   flows:
+#     login:
+#       ui_url: http://localhost:3000/login
+#     registration:
+#       ui_url: http://localhost:4455/register
+#     settings:
+#       ui_url: http://localhost:3000/settings
+#     recovery:
+#       enabled: false
+#     verification:
+#       enabled: false
+#     error:
+#       ui_url: http://localhost:3000/error
+
+selfservice:
+  default_browser_return_url: http://localhost:4455/
+  allowed_return_urls:
+    - http://localhost:4455
+
+  methods:
+    password:
+      enabled: true
+      config:
+        min_password_length: 6
+        identifier_similarity_check_enabled: false
+        haveibeenpwned_enabled: false
+
+  flows:
+    error:
+      ui_url: http://localhost:4455/error
+    settings:
+      ui_url: http://localhost:4455/settings
+      privileged_session_max_age: 15m
+      required_aal: highest_available
+    logout:
+      after:
+        default_browser_return_url: http://localhost:4455/login
+    login:
+      ui_url: http://localhost:4455/login
+    registration:
+      ui_url: http://localhost:4455/registration
+      after:
+        password:
+          hooks:
+            - hook: session
+
+courier:
+  smtp:
+    connection_uri: smtps://user:pass@smtp.mailtrap.io:465/
+
+secrets:
+  default:
+    - changemeplease1234
+
+security:
+  csrf:
+    enabled: true
+    cookie:
+      same_site: None # For cross-origin requests
+      secure: false # Set to 'true' if using HTTPS
+
+oauth2_provider:
+  url: http://localhost:4445
