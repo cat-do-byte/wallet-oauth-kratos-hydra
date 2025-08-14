@@ -1,0 +1,62 @@
+<!-- views/index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  </head>
+  <body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div id="app" class="bg-white p-8 rounded shadow w-96">
+      <h1 class="text-2xl font-bold mb-4">Register</h1>
+      <input
+        v-model="email"
+        type="email"
+        placeholder="Email"
+        class="border p-2 w-full mb-2"
+      />
+      <input
+        v-model="password"
+        type="password"
+        placeholder="Password"
+        class="border p-2 w-full mb-4"
+      />
+      <button
+        @click="register"
+        class="bg-blue-500 text-white px-4 py-2 rounded w-full"
+      >
+        Register
+      </button>
+      <p class="mt-4 text-center">
+        <a href="/login" class="text-blue-500"
+          >Already have an account? Login</a
+        >
+      </p>
+    </div>
+
+    <script>
+      const { createApp } = Vue
+      createApp({
+        data() {
+          return { email: "", password: "" }
+        },
+        methods: {
+          async register() {
+            try {
+              await axios.post("/register", {
+                email: this.email,
+                password: this.password,
+              })
+              alert("Registered successfully")
+              window.location.href = "/login"
+            } catch (err) {
+              alert("Error: " + err.response?.data?.error || err.message)
+            }
+          },
+        },
+      }).mount("#app")
+    </script>
+  </body>
+</html>

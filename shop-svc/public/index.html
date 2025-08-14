@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login with Wallet</title>
+  </head>
+  <body>
+    <h1>Connect to Wallet</h1>
+    <button onclick="startOAuth()">Login with Wallet</button>
+
+    <script>
+      function generateState(length = 16) {
+        const chars =
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        let state = ""
+        for (let i = 0; i < length; i++) {
+          state += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        return state
+      }
+
+      function startOAuth() {
+        const clientId = "pikachu" // change if needed
+        const redirectUri = encodeURIComponent("http://localhost:3050/callback")
+        const scope = "wallet.read"
+        const responseType = "code"
+        const state = generateState(16)
+        const authUrl =
+          `http://localhost:4444/oauth2/auth` +
+          `?client_id=${clientId}` +
+          `&response_type=${responseType}` +
+          `&scope=${scope}` +
+          `&redirect_uri=${redirectUri}` +
+          `&state=${state}`
+
+        window.location.href = authUrl
+      }
+    </script>
+  </body>
+</html>

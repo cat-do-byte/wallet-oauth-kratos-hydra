@@ -1,0 +1,114 @@
+<!-- views/products.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Products</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  </head>
+  <body class="bg-gray-100 p-6">
+    <header class="bg-gray-800 text-white">
+      <div
+        id="headerApp"
+        class="max-w-6xl mx-auto flex justify-between items-center p-4"
+      >
+        <div class="text-xl font-bold">
+          <a href="/" class="hover:text-gray-300">Shop App</a>
+        </div>
+        <nav class="flex space-x-4">
+          <a v-if="!isLoggedIn" href="/" class="hover:text-gray-300"
+            >Register</a
+          >
+          <a v-if="!isLoggedIn" href="/login" class="hover:text-gray-300"
+            >Login</a
+          >
+
+          <a v-if="isLoggedIn" href="/menu" class="hover:text-gray-300"
+            >Products</a
+          >
+          <a
+            v-if="isLoggedIn"
+            href="/connect-wallet"
+            class="hover:text-gray-300"
+            >Connect Wallet</a
+          >
+          <button v-if="isLoggedIn" @click="logout" class="hover:text-red-400">
+            Logout
+          </button>
+        </nav>
+      </div>
+    </header>
+    <div id="app" class="max-w-3xl mx-auto">
+      <h1 class="text-3xl font-bold mb-6">Products</h1>
+      <div v-if="products.length" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          v-for="p in products"
+          :key="p.id"
+          class="bg-white p-4 rounded shadow"
+        >
+          <h2 class="text-lg font-semibold">{{ p.name }}</h2>
+          <p class="text-gray-700 mb-2">$ {{ p.price }}</p>
+          <button
+            @click="buy(p.id)"
+            class="bg-blue-500 text-white px-3 py-1 rounded"
+          >
+            Buy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { createApp } = Vue
+      createApp({
+        data() {
+          return { products: [], isLoggedIn: false }
+        },
+        async mounted() {
+          const token = localStorage.getItem("token")
+          this.isLoggedIn = !!token
+          try {
+            const res = await axios.get("/products", {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            })
+            this.products = res.data.products
+          } catch (err) {
+            alert("Error loading products: " + err.message)
+          }
+        },
+        methods: {
+          logout() {
+            localStorage.removeItem("token")
+            this.isLoggedIn = false
+            window.location.href = "/"
+          },
+          async buy(id) {
+            try {
+              const res = await axios.post(
+                `/buy/${id}`,
+                {},
+                {
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                }
+              )
+              alert(
+                `Order placed: ${res.data.productName} - $${res.data.price}`
+              )
+            } catch (err) {
+              alert(
+                "Error buying product: " + err.response?.data?.error ||
+                  err.message
+              )
+            }
+          },
+        },
+      }).mount("#app")
+    </script>
+  </body>
+</html>
